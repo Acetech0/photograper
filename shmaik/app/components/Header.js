@@ -24,6 +24,7 @@ export default function Header({ activePage, onNavigate }) {
           >
             About
           </a>
+          
           <a
             href="#"
             id="nav-contact"
