@@ -18,6 +18,7 @@ export default function AboutPage() {
             <p>Based in Mumbai, India</p>
           </div>
           <hr className="about-divider2" />
+          
           <p className="about-bio">
             Shamik Deshmukh is a Mumbai-based fashion and commercial photographer with a distinct eye
             for mood, light, and the quiet drama within the human form. His work moves
