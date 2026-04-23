@@ -37,7 +37,7 @@ export default function Header({ activePage, onNavigate }) {
       </div>
       <hr className="header-divider" />
       <div className="header-sub">
-        <span className="tagline">Fashion and Commercial Photographer, Mumbai</span>
+        <span className="tagline">Fashion and Commercial Photographer, India</span>
         <div className="social-links">
           <a href="https://www.behance.net/shamikdeshmukh" target="_blank" rel="noopener noreferrer">
             Behance

@@ -11,15 +11,15 @@ export default function ContactPage() {
           </p>
           <div className="contact-info">
             <div className="contact-info-item">
-              <p>Location</p>
-              <p>Mumbai, India</p>
+              <p><strong>Location</strong></p>
+              <p>India</p>
             </div>
             <div className="contact-info-item">
-              <p>Status</p>
+              <p><strong>Status</strong></p>
               <p>Available for Freelance</p>
             </div>
             <div className="contact-info-item">
-              <p>Portfolio</p>
+              <p><strong>Portfolio</strong></p>
               <p>behance.net/shamikdeshmukh</p>
             </div>
           </div>
@@ -27,15 +27,15 @@ export default function ContactPage() {
 
         <div className="contact-form">
           <div className="form-group">
-            <label>Your Name</label>
+            <label><strong>Your Name</strong></label>
             <input type="text" placeholder="Full name" />
           </div>
           <div className="form-group">
-            <label>Email Address</label>
+            <label><strong>Email Address</strong></label>
             <input type="email" placeholder="you@example.com" />
           </div>
           <div className="form-group">
-            <label>Project Type</label>
+            <label><strong>Project Type</strong></label>
             <select defaultValue="">
               <option value="" disabled>Select a service</option>
               <option>Fashion &amp; Editorial</option>
@@ -46,7 +46,7 @@ export default function ContactPage() {
             </select>
           </div>
           <div className="form-group">
-            <label>Message</label>
+            <label><strong>Message</strong></label>
             <textarea placeholder="Tell me about your project…" />
           </div>
           <button className="btn-send" type="button">Send Message</button>

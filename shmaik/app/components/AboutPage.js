@@ -15,12 +15,12 @@ export default function AboutPage() {
           <div className="about-name-block">
             <p>Shamik Deshmukh</p>
             <p>Fashion and Commercial Photography</p>
-            <p>Based in Mumbai, India</p>
+            <p>Based in India</p>
           </div>
           <hr className="about-divider2" />
           
           <p className="about-bio">
-            Shamik Deshmukh is a Mumbai-based fashion and commercial photographer with a distinct eye
+            Shamik Deshmukh is a India-based fashion and commercial photographer with a distinct eye
             for mood, light, and the quiet drama within the human form. His work moves
             between soft editorial glamour and raw, intimate portraiture — always deeply
             personal, always intentional.
