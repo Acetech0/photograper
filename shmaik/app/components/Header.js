@@ -42,7 +42,7 @@ export default function Header({ activePage, onNavigate }) {
           <a href="https://www.behance.net/shamikdeshmukh" target="_blank" rel="noopener noreferrer">
             Behance
           </a>
-          <a href="#">Instagram</a>
+          <a href="https://www.instagram.com/shamik.deshmukh?igsh=MXN4NTh1OG5hbjRnZQ==" target="_blank" rel="noopener noreferrer">Instagram</a>
         </div>
       </div>
     </header>

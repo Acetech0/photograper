@@ -395,6 +395,17 @@ nav a:hover { border-bottom: 2px solid #111; }
   transition: background 0.25s, color 0.25s;
 }
 .btn-send:hover { background: #111; color: #fff; }
+.btn-send:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-send:disabled:hover { background: transparent; color: #111; }
+.form-feedback {
+  font-size: 13px;
+  font-weight: 300;
+  letter-spacing: 0.06em;
+  padding: 10px 0;
+  margin-bottom: 14px;
+}
+.form-success { color: #2a7a2a; }
+.form-error   { color: #b00020; }
 
 /* ── Footer ── */
 footer {
