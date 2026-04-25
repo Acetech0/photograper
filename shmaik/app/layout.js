@@ -3,7 +3,7 @@ import './globals.css';
 export const metadata = {
   title: 'Shamik Deshmukh',
   description:
-    'Shamik Deshmukh — Fashion and Commercial Photographer based in Mumbai, India.',
+    'Shamik Deshmukh — Fashion and Commercial Photographer based in India.',
 };
 
 export default function RootLayout({ children }) {
