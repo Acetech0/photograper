@@ -8,6 +8,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Name, email and message are required.' }, { status: 400 });
     }
 
+    if (!process.env.WEB3FORMS_KEY) {
+      console.error('Contact route error: WEB3FORMS_KEY environment variable is not set.');
+      return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
+    }
+
     const res = await fetch('https://api.web3forms.com/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -22,6 +27,14 @@ export async function POST(request) {
         message,
       }),
     });
+
+    // Guard: web3forms sometimes returns HTML on misconfiguration instead of JSON
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      const text = await res.text();
+      console.error('Contact route error: web3forms returned non-JSON response:', text.slice(0, 200));
+      throw new Error('Unexpected response from mail service.');
+    }
 
     const data = await res.json();
     if (!data.success) throw new Error(data.message || 'Submission failed.');
