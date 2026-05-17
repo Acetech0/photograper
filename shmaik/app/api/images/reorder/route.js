@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { cloudinaryPost } from '@/lib/cloudinary';
+import { updateImageProperties } from '@/lib/googleDrive';
 
 export async function PATCH(request) {
   try {
@@ -9,13 +9,10 @@ export async function PATCH(request) {
       return NextResponse.json({ error: 'orderedPublicIds must be an array' }, { status: 400 });
     }
 
-    // Update order context for each image in parallel
+    // Update order appProperty for each image (publicId = Drive file ID)
     await Promise.all(
-      orderedPublicIds.map((publicId, index) =>
-        cloudinaryPost('/resources/image/context', {
-          context: `order=${index}`,
-          public_ids: [publicId],
-        })
+      orderedPublicIds.map((fileId, index) =>
+        updateImageProperties(fileId, { order: String(index) })
       )
     );
 

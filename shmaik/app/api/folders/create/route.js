@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchFolderOrderArray, uploadFolderOrderJson } from '@/lib/cloudinary';
+import { fetchFolderOrderArray, uploadFolderOrderJson } from '@/lib/googleDrive';
 import { slugify } from '@/lib/utils';
 
 export async function POST(request) {

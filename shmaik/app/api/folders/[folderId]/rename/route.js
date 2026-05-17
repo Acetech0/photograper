@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchFolderImages, cloudinaryPost } from '@/lib/cloudinary';
+import { fetchFolderImages, updateImageProperties } from '@/lib/googleDrive';
 
 export async function PATCH(request, { params }) {
   try {
@@ -15,13 +15,10 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ success: true, updated: 0 });
     }
 
-    // Update context for all images in the folder
+    // Update folder_name appProperty on all images in the folder
     await Promise.all(
       images.map((img) =>
-        cloudinaryPost('/resources/image/context', {
-          context: `folder_name=${newName.trim()}`,
-          public_ids: [img.public_id],
-        })
+        updateImageProperties(img.id, { folder_name: newName.trim() })
       )
     );
 

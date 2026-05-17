@@ -49,6 +49,9 @@ function FolderCard({ folder, onRename, onDelete, onClick }) {
           alt={folder.name}
           className="folder-card-img"
           loading="lazy"
+          decoding="async"
+          width={400}
+          height={300}
         />
       ) : (
         <div className="folder-card-no-cover">

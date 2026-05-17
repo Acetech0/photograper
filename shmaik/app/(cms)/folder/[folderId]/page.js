@@ -21,9 +21,17 @@ import { ArrowLeft, Upload, Star, Trash2, CheckCircle2, ImageIcon } from 'lucide
 import CMSHeader from '../../components/CMSHeader';
 import Modal from '../../components/Modal';
 
-const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+// ─── Allowed types (must match server-side validation) ───────────────────────
+const ACCEPTED_TYPES = {
+  'image/jpeg': [],
+  'image/jpg': [],
+  'image/png': [],
+  'image/webp': [],
+  'image/gif': [],
+};
+const MAX_SIZE_MB = 10;
 
+// ─── Convert to WebP before upload (client-side, optional optimisation) ──────
 async function convertToWebP(file) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -38,6 +46,7 @@ async function convertToWebP(file) {
   });
 }
 
+// ─── ImageCard ────────────────────────────────────────────────────────────────
 function ImageCard({ image, onSetCover, onDelete }) {
   const {
     attributes,
@@ -60,7 +69,15 @@ function ImageCard({ image, onSetCover, onDelete }) {
       className={`image-card ${isDragging ? 'dragging' : ''} ${image.is_cover ? 'is-cover' : ''}`}
     >
       {image.is_cover && <div className="cover-badge">★ Cover</div>}
-      <img src={image.url} alt={image.original_name || 'Photo'} loading="lazy" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={image.url}
+        alt={image.original_name || 'Photo'}
+        loading="lazy"
+        decoding="async"
+        width={400}
+        height={300}
+      />
 
       <div className="image-card-actions" {...attributes} {...listeners}>
         <button
@@ -85,6 +102,7 @@ function ImageCard({ image, onSetCover, onDelete }) {
   );
 }
 
+// ─── FolderPage ───────────────────────────────────────────────────────────────
 export default function FolderPage() {
   const router = useRouter();
   const params = useParams();
@@ -96,8 +114,8 @@ export default function FolderPage() {
   const [deleteModal, setDeleteModal] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Upload state
-  const [uploads, setUploads] = useState([]); // { id, name, preview, progress, done }
+  // Upload state: { id, name, preview, progress, done, error }
+  const [uploads, setUploads] = useState([]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -124,43 +142,53 @@ export default function FolderPage() {
 
   useEffect(() => { loadImages(); }, [loadImages]);
 
+  // ── Upload handler ──────────────────────────────────────────────────────────
   const onDrop = useCallback(
     async (acceptedFiles) => {
       if (!acceptedFiles.length) return;
 
-      // Create preview items
-      const newUploads = acceptedFiles.map((f) => ({
+      // Reject oversized files early (client-side guard)
+      const oversized = acceptedFiles.filter((f) => f.size > MAX_SIZE_MB * 1024 * 1024);
+      if (oversized.length) {
+        toast.error(`${oversized.length} file(s) exceed the ${MAX_SIZE_MB} MB limit`);
+      }
+      const validFiles = acceptedFiles.filter((f) => f.size <= MAX_SIZE_MB * 1024 * 1024);
+      if (!validFiles.length) return;
+
+      // Create preview entries
+      const newUploads = validFiles.map((f) => ({
         id: `${f.name}-${Date.now()}`,
         name: f.name,
         preview: URL.createObjectURL(f),
         progress: 0,
         done: false,
+        error: false,
       }));
       setUploads((prev) => [...prev, ...newUploads]);
 
       const currentImageCount = images.length;
-      let firstUploadPublicId = null;
+      let firstUploadFileId = null;
 
-      const uploadPromises = acceptedFiles.map(async (file, i) => {
+      const uploadPromises = validFiles.map(async (file, i) => {
         const uploadItem = newUploads[i];
         try {
-          // Convert to WebP
+          // Convert to WebP for smaller payload
           const webpBlob = await convertToWebP(file);
+          const webpFileName = `${file.name.replace(/\.[^.]+$/, '')}.webp`;
 
           const orderIndex = currentImageCount + i;
-          const formData = new FormData();
-          formData.append('file', webpBlob, `${file.name.replace(/\.[^.]+$/, '')}.webp`);
-          formData.append('upload_preset', UPLOAD_PRESET);
-          formData.append('folder', `galleries/${folderId}`);
-          formData.append(
-            'context',
-            `folder_name=${folderName || folderId}|is_cover=false|order=${orderIndex}|original_name=${file.name}`
-          );
 
-          // Simulate progress via XHR
+          const formData = new FormData();
+          formData.append('file', webpBlob, webpFileName);
+          formData.append('folderId', folderId);
+          formData.append('folderName', folderName || folderId);
+          formData.append('orderIndex', String(orderIndex));
+          formData.append('isCover', i === 0 && currentImageCount === 0 ? 'true' : 'false');
+
+          // Use XHR for progress tracking
           const result = await new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
-            xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`);
+            xhr.open('POST', '/api/images/upload');
             xhr.upload.onprogress = (e) => {
               if (e.lengthComputable) {
                 const pct = Math.round((e.loaded / e.total) * 100);
@@ -173,10 +201,13 @@ export default function FolderPage() {
               if (xhr.status === 200) {
                 resolve(JSON.parse(xhr.responseText));
               } else {
-                reject(new Error(xhr.responseText));
+                const errMsg = (() => {
+                  try { return JSON.parse(xhr.responseText).error; } catch { return xhr.responseText; }
+                })();
+                reject(new Error(`Upload failed for "${file.name}": ${errMsg}`));
               }
             };
-            xhr.onerror = () => reject(new Error('Upload failed'));
+            xhr.onerror = () => reject(new Error(`Network error uploading "${file.name}"`));
             xhr.send(formData);
           });
 
@@ -184,9 +215,10 @@ export default function FolderPage() {
             prev.map((u) => (u.id === uploadItem.id ? { ...u, progress: 100, done: true } : u))
           );
 
-          if (i === 0) firstUploadPublicId = result.public_id;
+          if (i === 0) firstUploadFileId = result.publicId;
           return result;
         } catch (err) {
+          console.error(err.message);
           setUploads((prev) =>
             prev.map((u) => (u.id === uploadItem.id ? { ...u, error: true } : u))
           );
@@ -195,20 +227,17 @@ export default function FolderPage() {
       });
 
       try {
-        const results = await Promise.all(uploadPromises);
+        const results = await Promise.allSettled(uploadPromises);
+        const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+        const failed = results.filter((r) => r.status === 'rejected').length;
 
-        // If this is the first upload in the folder, set cover automatically
-        if (currentImageCount === 0 && firstUploadPublicId) {
-          await fetch(`/api/images/${encodeURIComponent(firstUploadPublicId)}/set-cover`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ folderId }),
-          });
+        if (succeeded > 0) {
+          toast.success(`${succeeded} photo${succeeded > 1 ? 's' : ''} uploaded!`);
+        }
+        if (failed > 0) {
+          toast.error(`${failed} upload${failed > 1 ? 's' : ''} failed`);
         }
 
-        toast.success(`${results.length} photo${results.length > 1 ? 's' : ''} uploaded!`);
-
-        // Clear uploads after a short delay
         setTimeout(() => {
           setUploads([]);
           loadImages();
@@ -223,10 +252,11 @@ export default function FolderPage() {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { 'image/png': [], 'image/jpeg': [], 'image/webp': [] },
+    accept: ACCEPTED_TYPES,
     multiple: true,
   });
 
+  // ── Drag-to-reorder ─────────────────────────────────────────────────────────
   async function handleDragEnd(event) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -248,6 +278,7 @@ export default function FolderPage() {
     }
   }
 
+  // ── Set cover ───────────────────────────────────────────────────────────────
   async function handleSetCover(image) {
     try {
       const res = await fetch(`/api/images/${encodeURIComponent(image.publicId)}/set-cover`, {
@@ -268,6 +299,7 @@ export default function FolderPage() {
     }
   }
 
+  // ── Delete ──────────────────────────────────────────────────────────────────
   async function handleDelete() {
     if (!deleteModal) return;
     setActionLoading(true);
@@ -312,7 +344,9 @@ export default function FolderPage() {
           <div className="drop-zone-text">
             {isDragActive ? 'Drop photos here' : 'Drag & drop photos here, or click to browse'}
           </div>
-          <div className="drop-zone-hint">Supports PNG, JPG, JPEG, WEBP · Converts to WebP automatically</div>
+          <div className="drop-zone-hint">
+            Supports JPG, PNG, WEBP, GIF · Max {MAX_SIZE_MB} MB · Converts to WebP automatically
+          </div>
         </div>
       </div>
 
@@ -322,8 +356,11 @@ export default function FolderPage() {
           <div className="upload-preview-grid">
             {uploads.map((u) => (
               <div key={u.id} className="upload-preview-item">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={u.preview} alt={u.name} className="upload-preview-img" />
-                {!u.done ? (
+                {u.error ? (
+                  <div className="upload-preview-done" style={{ color: '#ef4444' }}>✕</div>
+                ) : !u.done ? (
                   <div className="upload-progress-bar">
                     <div className="upload-progress-fill" style={{ width: `${u.progress}%` }} />
                   </div>
@@ -389,7 +426,7 @@ export default function FolderPage() {
       {deleteModal && (
         <Modal
           title="Delete Image"
-          description="This will permanently delete the image. This cannot be undone."
+          description="This will permanently delete the image from Google Drive. This cannot be undone."
           onClose={() => setDeleteModal(null)}
         >
           <div className="modal-actions">

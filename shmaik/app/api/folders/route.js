@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
-import { fetchFolderOrderArray, fetchFolderImages } from '@/lib/cloudinary';
-import { parseContext } from '@/lib/utils';
+import { fetchFolderOrderArray, fetchFolderImages } from '@/lib/googleDrive';
 
 export async function GET() {
   try {
-    const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
     const folderIds = await fetchFolderOrderArray();
 
     if (!folderIds || folderIds.length === 0) {
@@ -15,16 +13,19 @@ export async function GET() {
       folderIds.map(async (folderId, index) => {
         try {
           const images = await fetchFolderImages(folderId);
-          const coverImage = images.find(
-            (img) => parseContext(img.context)?.is_cover === 'true'
-          );
-          const coverUrl = coverImage
-            ? coverImage.secure_url
-            : images[0]?.secure_url || null;
 
-          const folderName = images[0]
-            ? parseContext(images[0].context)?.folder_name || folderId
-            : folderId;
+          // Find cover image by appProperties.is_cover === 'true'
+          const coverFile = images.find(
+            (img) => img.appProperties?.is_cover === 'true'
+          );
+          const coverImage = coverFile || images[0] || null;
+
+          const coverUrl = coverImage
+            ? `https://drive.google.com/uc?export=view&id=${coverImage.id}`
+            : null;
+
+          const folderName =
+            images[0]?.appProperties?.folder_name || folderId;
 
           return {
             id: folderId,

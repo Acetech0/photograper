@@ -7,12 +7,17 @@ const nextConfig = {
         hostname: 'mir-s3-cdn-cf.behance.net',
       },
       {
+        // Google Drive direct image URLs
         protocol: 'https',
-        hostname: 'res.cloudinary.com',
+        hostname: 'drive.google.com',
+      },
+      {
+        // Google Drive thumbnail/export URLs (lh3 CDN)
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
       },
     ],
   },
-  // Allow importing from lib/
   experimental: {},
 };
 

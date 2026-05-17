@@ -1,32 +1,24 @@
 import { NextResponse } from 'next/server';
-import { fetchFolderImages, cloudinaryPost } from '@/lib/cloudinary';
-import { parseContext } from '@/lib/utils';
+import { updateImageProperties, fetchFolderImages } from '@/lib/googleDrive';
 
 export async function PATCH(request, { params }) {
   try {
     const { publicId } = await params;
     const { folderId } = await request.json();
-    const decodedPublicId = decodeURIComponent(publicId);
+    const fileId = decodeURIComponent(publicId);
 
     // Get all images in the folder
     const images = await fetchFolderImages(folderId);
 
-    // Set is_cover=false for all images
-    await cloudinaryPost('/resources/image/context', {
-      context: 'is_cover=false',
-      public_ids: images.map((img) => img.public_id),
-    });
+    // Clear is_cover on all images in the folder
+    await Promise.all(
+      images.map((img) => updateImageProperties(img.id, { is_cover: 'false' }))
+    );
 
-    // Set is_cover=true for the target image
-    await cloudinaryPost('/resources/image/context', {
-      context: 'is_cover=true',
-      public_ids: [decodedPublicId],
-    });
+    // Set is_cover=true on the target image
+    await updateImageProperties(fileId, { is_cover: 'true' });
 
-    // Find the new cover URL
-    const coverImage = images.find((img) => img.public_id === decodedPublicId);
-    const newCoverUrl = coverImage?.secure_url || null;
-
+    const newCoverUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
     return NextResponse.json({ success: true, newCoverUrl });
   } catch (error) {
     console.error('PATCH /api/images/[publicId]/set-cover error:', error);

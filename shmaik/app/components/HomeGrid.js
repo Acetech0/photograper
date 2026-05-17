@@ -94,6 +94,9 @@ function Lightbox({ folder, onClose }) {
               className="lb-img"
               src={images[current]?.url}
               alt={images[current]?.original_name || 'Photo'}
+              decoding="async"
+              width={1200}
+              height={800}
             />
 
             {/* Next arrow */}
@@ -120,6 +123,10 @@ function Lightbox({ folder, onClose }) {
               src={img.url}
               alt={img.original_name || 'Photo'}
               onClick={() => setCurrent(i)}
+              loading="lazy"
+              decoding="async"
+              width={120}
+              height={80}
             />
           ))}
         </div>
@@ -129,11 +136,18 @@ function Lightbox({ folder, onClose }) {
 }
 
 /* ─── Cover photo item ─────────────────────────────────────── */
-function CoverItem({ folder, num, onClick }) {
+function CoverItem({ folder, num, onClick, isFirstItem }) {
   return (
     <div className="photo-item" onClick={onClick} style={{ cursor: 'pointer' }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={folder.coverImageUrl} alt={folder.name} loading="lazy" />
+      <img
+        src={folder.coverImageUrl}
+        alt={folder.name}
+        loading={isFirstItem ? 'eager' : 'lazy'}
+        decoding="async"
+        width={600}
+        height={400}
+      />
       <span className="photo-number">{num}</span>
       <div className="photo-folder-name">{folder.name}</div>
     </div>
@@ -211,6 +225,7 @@ export default function HomeGrid() {
           folder={folder}
           num={String(startOffset + i * 4 + 1).padStart(2, '0')}
           onClick={() => setOpenFolder(folder)}
+          isFirstItem={startOffset === 0 && i === 0}
         />
       ))}
     </div>
