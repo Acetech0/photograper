@@ -539,6 +539,35 @@
 .empty-state-desc { font-size: 14px; line-height: 1.5; max-width: 300px; }
 
 /* ──────────────────────────────────────── */
+/* CMS Tabs */
+/* ──────────────────────────────────────── */
+.cms-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+.cms-tab {
+  padding: 10px 22px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color var(--transition), border-color var(--transition);
+  margin-bottom: -1px;
+}
+.cms-tab:hover { color: var(--text-primary); }
+.cms-tab.active {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+}
+
+/* ──────────────────────────────────────── */
 /* Responsive */
 /* ──────────────────────────────────────── */
 @media (max-width: 768px) {

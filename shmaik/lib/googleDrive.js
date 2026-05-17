@@ -5,6 +5,9 @@
  * Environment variables required (server-side only):
  *   GOOGLE_SERVICE_ACCOUNT_KEY  — full JSON string of the service account key file
  *   GOOGLE_DRIVE_FOLDER_ID      — Drive folder ID that the service account can write to
+ *
+ * All API calls include supportsAllDrives: true so they work with
+ * Shared Drives (required — service accounts have no personal storage quota).
  */
 
 import { google } from 'googleapis';
@@ -70,11 +73,12 @@ export async function getOrCreateDriveFolder(folderId) {
   const drive = getDrive();
   const rootId = ROOT_FOLDER_ID();
 
-  // Search for existing subfolder
+  // Search for existing subfolder (supportsAllDrives + includeItemsFromAllDrives required for Shared Drives)
   const res = await drive.files.list({
     q: `name='${folderId}' and mimeType='application/vnd.google-apps.folder' and '${rootId}' in parents and trashed=false`,
     fields: 'files(id)',
-    spaces: 'drive',
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
   });
 
   if (res.data.files?.length > 0) {
@@ -89,6 +93,7 @@ export async function getOrCreateDriveFolder(folderId) {
       parents: [rootId],
     },
     fields: 'id',
+    supportsAllDrives: true,
   });
 
   return created.data.id;
@@ -142,6 +147,7 @@ export async function uploadImageToDrive({
       body: stream,
     },
     fields: 'id, name',
+    supportsAllDrives: true,
   });
 
   const fileId = response.data.id;
@@ -150,6 +156,7 @@ export async function uploadImageToDrive({
   await drive.permissions.create({
     fileId,
     requestBody: { role: 'reader', type: 'anyone' },
+    supportsAllDrives: true,
   });
 
   console.log(`[Drive] Uploaded "${fileName}" → fileId=${fileId}`);
@@ -169,7 +176,8 @@ export async function fetchFolderImages(folderId) {
   const folderRes = await drive.files.list({
     q: `name='${folderId}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
     fields: 'files(id)',
-    spaces: 'drive',
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
   });
 
   if (!folderRes.data.files?.length) return [];
@@ -179,7 +187,8 @@ export async function fetchFolderImages(folderId) {
   const filesRes = await drive.files.list({
     q: `'${driveFolderId}' in parents and mimeType contains 'image/' and trashed=false`,
     fields: 'files(id, name, appProperties)',
-    spaces: 'drive',
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
     pageSize: 500,
   });
 
@@ -194,7 +203,10 @@ export async function fetchFolderImages(folderId) {
 export async function deleteImageFromDrive(fileId) {
   try {
     const drive = getDrive();
-    await drive.files.delete({ fileId });
+    await drive.files.delete({
+      fileId,
+      supportsAllDrives: true,
+    });
     console.log(`[Drive] Deleted fileId=${fileId}`);
   } catch (err) {
     console.error(`[Drive] Failed to delete fileId=${fileId}: ${err.message}`);
@@ -216,9 +228,14 @@ export async function deleteAllImagesInFolder(folderId) {
     const folderRes = await drive.files.list({
       q: `name='${folderId}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
       fields: 'files(id)',
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
     });
     if (folderRes.data.files?.length) {
-      await drive.files.delete({ fileId: folderRes.data.files[0].id });
+      await drive.files.delete({
+        fileId: folderRes.data.files[0].id,
+        supportsAllDrives: true,
+      });
     }
   } catch {
     // Non-fatal — folder may already be gone
@@ -239,18 +256,22 @@ export async function updateImageProperties(fileId, props) {
   await drive.files.update({
     fileId,
     requestBody: { appProperties: props },
+    supportsAllDrives: true,
   });
 }
 
 // ─── Folder order JSON ────────────────────────────────────────────────────
 
 const ORDER_FILE_NAME = 'folder_order.json';
+const PROJECT_ORDER_FILE_NAME = 'projects_order.json';
 
 async function findOrderFile(drive) {
   const rootId = ROOT_FOLDER_ID();
   const res = await drive.files.list({
     q: `name='${ORDER_FILE_NAME}' and '${rootId}' in parents and trashed=false`,
     fields: 'files(id)',
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
   });
   return res.data.files?.[0]?.id || null;
 }
@@ -266,7 +287,7 @@ export async function fetchFolderOrderArray() {
     if (!fileId) return null;
 
     const res = await drive.files.get(
-      { fileId, alt: 'media' },
+      { fileId, alt: 'media', supportsAllDrives: true },
       { responseType: 'text' }
     );
     const content = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
@@ -293,6 +314,7 @@ export async function uploadFolderOrderJson(orderedIds) {
     await drive.files.update({
       fileId: existingId,
       media: { mimeType: 'application/json', body: stream },
+      supportsAllDrives: true,
     });
     console.log('[Drive] Updated folder_order.json');
   } else {
@@ -304,7 +326,75 @@ export async function uploadFolderOrderJson(orderedIds) {
         mimeType: 'application/json',
       },
       media: { mimeType: 'application/json', body: stream },
+      supportsAllDrives: true,
     });
     console.log('[Drive] Created folder_order.json');
+  }
+}
+
+// ─── Project order JSON ───────────────────────────────────────────────────
+
+async function findProjectOrderFile(drive) {
+  const rootId = ROOT_FOLDER_ID();
+  const res = await drive.files.list({
+    q: `name='${PROJECT_ORDER_FILE_NAME}' and '${rootId}' in parents and trashed=false`,
+    fields: 'files(id)',
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+  });
+  return res.data.files?.[0]?.id || null;
+}
+
+/**
+ * Read the project order array from Drive (projects_order.json).
+ * Returns null if not found.
+ */
+export async function fetchProjectOrderArray() {
+  try {
+    const drive = getDrive();
+    const fileId = await findProjectOrderFile(drive);
+    if (!fileId) return null;
+
+    const res = await drive.files.get(
+      { fileId, alt: 'media', supportsAllDrives: true },
+      { responseType: 'text' }
+    );
+    const content = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+    const parsed = JSON.parse(content);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Write/overwrite the project order array to Drive (projects_order.json).
+ */
+export async function uploadProjectOrderJson(orderedIds) {
+  const drive = getDrive();
+  const rootId = ROOT_FOLDER_ID();
+  const json = JSON.stringify(orderedIds);
+  const stream = Readable.from([json]);
+
+  const existingId = await findProjectOrderFile(drive);
+
+  if (existingId) {
+    await drive.files.update({
+      fileId: existingId,
+      media: { mimeType: 'application/json', body: stream },
+      supportsAllDrives: true,
+    });
+    console.log('[Drive] Updated projects_order.json');
+  } else {
+    await drive.files.create({
+      requestBody: {
+        name: PROJECT_ORDER_FILE_NAME,
+        parents: [rootId],
+        mimeType: 'application/json',
+      },
+      media: { mimeType: 'application/json', body: stream },
+      supportsAllDrives: true,
+    });
+    console.log('[Drive] Created projects_order.json');
   }
 }

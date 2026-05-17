@@ -18,6 +18,14 @@ export default function Header({ activePage, onNavigate }) {
           </a>
           <a
             href="#"
+            id="nav-projects"
+            className={activePage === 'projects' ? 'active' : ''}
+            onClick={(e) => { e.preventDefault(); onNavigate('projects'); }}
+          >
+            Projects
+          </a>
+          <a
+            href="#"
             id="nav-about"
             className={activePage === 'about' ? 'active' : ''}
             onClick={(e) => { e.preventDefault(); onNavigate('about'); }}

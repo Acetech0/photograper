@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import HomeGrid from './components/HomeGrid';
+import ProjectsGrid from './components/ProjectsGrid';
 import AboutPage from './components/AboutPage';
 import ContactPage from './components/ContactPage';
 
@@ -20,6 +21,7 @@ export default function Page() {
       <Header activePage={activePage} onNavigate={navigate} />
 
       {activePage === 'home' && <HomeGrid />}
+      {activePage === 'projects' && <ProjectsGrid />}
       {activePage === 'about' && <AboutPage />}
       {activePage === 'contact' && <ContactPage />}
 
